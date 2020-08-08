@@ -1,0 +1,21 @@
+package main
+
+import "fmt"
+
+// This is a simple example of a function (Print) with
+// a type parameter.  In this example, parameter T can be 
+// assigned any valid Go type when the function is used.
+// Then the value parameter must match the type parameter.
+func Print(type T)(val []T) {
+	for _, v := range val {
+		fmt.Println(v)
+	}
+}
+
+func main() {
+	// This shows the usaeg of a parameterized type function.
+	// The type is specified at this callsite by specifying
+	// the type argument and the value argument that uses that
+	// type.
+	Print(int)([]int{1,2,3,4})
+}

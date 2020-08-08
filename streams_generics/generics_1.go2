@@ -1,0 +1,68 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"strings"
+)
+
+// This function uses type parameter S for both stream and fn
+// parameters. Note that Stream1 can only use stream of form
+// <-chan S
+func Stream1(type S)(ctx context.Context, stream <-chan S, fn func(S) error) error {
+	if stream == nil || fn == nil {
+		return fmt.Errorf("stream and func are required")
+	}
+
+	for  {
+		select {
+		case <-ctx.Done():
+			return nil
+		case i, ok := <-stream:
+			if !ok{
+				return nil
+			}
+			if err := fn(i); err != nil {
+				log.Println(err)
+			}
+		}
+	}
+	return nil
+}
+
+func main() {
+	stream := make(chan string)
+	go func(){
+		defer close(stream)
+		stream <- "parameteric"; stream <- "polymorphism"
+	}()
+
+	if err := Stream1(string)(
+		context.Background(),
+		stream,
+		func(val string) error {
+			fmt.Println(strings.ToUpper(val))
+			return nil
+		},
+	); err != nil {
+		log.Fatal(err)
+	}
+
+	stream2 := make(chan int)
+	go func(){
+		defer close(stream2)
+		stream2 <- 1; stream2 <- 2; stream2 <- 3
+	}()
+
+	if err := Stream1(int)(
+		context.Background(),
+		stream2,
+		func(val int) error {
+			fmt.Println(2 * val)
+			return nil
+		},
+	); err != nil {
+		log.Fatal(err)
+	}
+}

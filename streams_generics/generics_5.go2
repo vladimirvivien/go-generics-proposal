@@ -1,0 +1,89 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"strings"
+)
+
+type Stringable interface {
+	type string, []byte
+}
+
+type StringItem string
+func (i StringItem) Data() string {
+	return string(i)
+}
+
+type BytesItem []byte
+func (b BytesItem) Data() string {
+	return string(b)
+}
+
+type StreamableItem interface {
+	Stringable
+	Data() string
+}
+
+type Chan (type T) <-chan T
+
+// This version of the function uses polymorphic type Chan(T) as well as
+// a type parameter T which is constrained by StreamableItem. Notice that
+// StreamableItem is composed of embedded constraint Stringable and the Data() method.
+func Stream5(type T StreamableItem)(ctx context.Context, stream Chan(T), fn func(T) error) error {
+	if stream == nil || fn == nil {
+		return fmt.Errorf("stream and func are required")
+	}
+	for  {
+		select {
+		case <-ctx.Done():
+			return nil
+		case i, ok := <-stream:
+			if !ok{
+				return nil
+			}
+			if err := fn(i); err != nil {
+				log.Println(err)
+			}
+		}
+	}
+	return nil
+}
+
+func main() {
+	stream := make(chan StringItem)
+	go func(){
+		defer close(stream)
+		stream <- "One"; stream <- "Two"; stream <- "Three"
+	}()
+
+	if err := Stream5(StringItem)(
+		context.Background(),
+		stream,
+		func(val StringItem) error {
+			fmt.Println(strings.ToUpper(val.Data()))
+			return nil
+		},
+	); err != nil {
+		log.Fatal(err)
+	}
+
+	stream2 := make(chan BytesItem)
+	go func(){
+		defer close(stream2)
+		stream2 <- []byte("HELLO"); stream2 <- []byte("WORLD!")
+	}()
+
+	if err := Stream5(BytesItem)(
+		context.Background(),
+		stream2,
+		func(val BytesItem) error {
+			fmt.Println(strings.ToLower(val.Data()))
+			return nil
+		},
+	); err != nil {
+		log.Fatal(err)
+	}
+
+}

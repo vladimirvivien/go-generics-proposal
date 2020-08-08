@@ -1,0 +1,60 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"strings"
+)
+
+type StringItem string
+func (i StringItem) Data() string {
+	return string(i)
+}
+
+type StreamItem interface {
+	Data() string
+}
+
+// This function uses type parameter S to specify the type for
+// stream of form <-chan S. It also narrows the types that can
+// be used with constraint interface StreamItem.
+func Stream2(type S StreamItem)(ctx context.Context, stream <-chan S, fn func(S) error) error {
+	if stream == nil || fn == nil {
+		return fmt.Errorf("stream and func are required")
+	}
+	for  {
+		select {
+		case <-ctx.Done():
+			return nil
+		case i, ok := <-stream:
+			if !ok{
+				return nil
+			}
+			if err := fn(i); err != nil {
+				log.Println(err)
+			}
+		}
+	}
+	return nil
+}
+
+func main() {
+	stream := make(chan StringItem)
+	go func(){
+		defer close(stream)
+		stream <- "One"; stream <- "Two"; stream <- "Three"
+	}()
+
+	if err := Stream2(StringItem)(
+		context.Background(),
+		stream,
+		func(val StringItem) error {
+			fmt.Println(strings.ToUpper(val.Data()))
+			return nil
+		},
+	); err != nil {
+		log.Fatal(err)
+	}
+
+}

@@ -1,0 +1,45 @@
+package main
+
+import (
+	"fmt"
+	"log"
+	"strings"
+)
+
+// In this implementation
+// This function uses type parameter S for both stream and fn
+// parameters. Note that Stream0 can only use stream of form
+// []S
+func Stream0(type S)(stream []S, fn func(S) error) error {
+	if stream == nil || fn == nil {
+		return fmt.Errorf("stream and func are required")
+	}
+	for _, i := range stream {
+		if err := fn(i); err != nil{
+			log.Println(err)
+		}
+	}
+	return nil
+}
+
+func main() {
+	if err := Stream0(int)(
+		[]int{2, 4, 6, 8},
+		func(val int) error {
+			fmt.Println(val * val)
+			return nil
+		},
+	); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := Stream0(string)(
+		[]string{"Hello", "World!"},
+		func(val string) error {
+			fmt.Println(strings.ToUpper(val))
+			return nil
+		},
+	); err != nil {
+		log.Fatal(err)
+	}
+}

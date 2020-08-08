@@ -1,0 +1,69 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"strings"
+)
+
+type Chan (type T) <-chan T
+
+// This version of the function uses polymorphic type Chan as well as
+// a type parameter S (on func Stream4) to specify the type for
+// stream Chan(T).
+func Stream4(type T)(ctx context.Context, stream Chan(T), fn func(T) error) error {
+	if stream == nil || fn == nil {
+		return fmt.Errorf("stream and func are required")
+	}
+	for  {
+		select {
+		case <-ctx.Done():
+			return nil
+		case i, ok := <-stream:
+			if !ok{
+				return nil
+			}
+			if err := fn(i); err != nil {
+				log.Println(err)
+			}
+		}
+	}
+	return nil
+}
+
+func main() {
+	stream := make(chan string)
+	go func(){
+		defer close(stream)
+		stream <- "One"; stream <- "Two"; stream <- "Three"
+	}()
+
+	if err := Stream4(string)(
+		context.Background(),
+		stream,
+		func(val string) error {
+			fmt.Println(strings.ToUpper(val))
+			return nil
+		},
+	); err != nil {
+		log.Fatal(err)
+	}
+
+	stream2 := make(chan float32)
+	go func(){
+		defer close(stream2)
+		stream2 <- 1; stream2 <- 2; stream2 <- 3
+	}()
+
+	if err := Stream4(float32)(
+		context.Background(),
+		stream2,
+		func(val float32) error {
+		     fmt.Printf("%f turtle(s)\n", val)
+			return nil
+		},
+	); err != nil {
+		log.Fatal(err)
+	}
+}
